@@ -1,0 +1,9 @@
+Vincent Stumpf
+Assignment 3
+
+This works, cel shader is not implemented.
+
+The values materials/lights are hardcoded into the constructors of the classes,
+but you can make your own with the getters and setters.
+
+The threshold for the Outline shader can be found in Program.h

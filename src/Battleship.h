@@ -8,45 +8,45 @@
 
 
 enum SQUARE_TYPES {
-	WATER_SQUARE = 1,
-	WATER_MISS = 2, //guessed
-	SHIP_HIT = 3,		//guessed
-	SHIP_MIN = 10,
-	SHIP_21 = SHIP_MIN,
-	SHIP_22,
-	SHIP_31,
-	SHIP_32,
-	SHIP_33,
-	SHIP_41,
-	SHIP_42,
-	SHIP_43,
-	SHIP_44,
-	SHIP_51,
-	SHIP_52,
-	SHIP_53,
-	SHIP_54,
-	SHIP_55,
-	SHIP_MAX = SHIP_55,
-	SHIP_HIT_MIN = 30,	//guessed
-	SHIP_21_HIT = SHIP_HIT_MIN,	//...
-	SHIP_22_HIT,
-	SHIP_31_HIT,
-	SHIP_32_HIT,
-	SHIP_33_HIT,
-	SHIP_41_HIT,
-	SHIP_42_HIT,
-	SHIP_43_HIT,
-	SHIP_44_HIT,
-	SHIP_51_HIT,
-	SHIP_52_HIT,
-	SHIP_53_HIT,
-	SHIP_54_HIT,
-	SHIP_55_HIT,
-	SHIP_HIT_MAX = 59	//guessed
+	SQ_WATER_SQUARE = 1,
+	SQ_WATER_MISS = 2, //guessed
+	SQ_SHIP_HIT = 3,		//guessed
+	SQ_SHIP_MIN = 10,
+	SQ_SHIP_21 = SQ_SHIP_MIN,
+	SQ_SHIP_22,
+	SQ_SHIP_31,
+	SQ_SHIP_32,
+	SQ_SHIP_33,
+	SQ_SHIP_41,
+	SQ_SHIP_42,
+	SQ_SHIP_43,
+	SQ_SHIP_44,
+	SQ_SHIP_51,
+	SQ_SHIP_52,
+	SQ_SHIP_53,
+	SQ_SHIP_54,
+	SQ_SHIP_55,
+	SQ_SHIP_MAX = SQ_SHIP_55,
+	SQ_SHIP_HIT_MIN = 30,	//guessed
+	SQ_SHIP_21_HIT = SQ_SHIP_HIT_MIN,	//...
+	SQ_SHIP_22_HIT,
+	SQ_SHIP_31_HIT,
+	SQ_SHIP_32_HIT,
+	SQ_SHIP_33_HIT,
+	SQ_SHIP_41_HIT,
+	SQ_SHIP_42_HIT,
+	SQ_SHIP_43_HIT,
+	SQ_SHIP_44_HIT,
+	SQ_SHIP_51_HIT,
+	SQ_SHIP_52_HIT,
+	SQ_SHIP_53_HIT,
+	SQ_SHIP_54_HIT,
+	SQ_SHIP_55_HIT,
+	SQ_SHIP_HIT_MAX = 59	//guessed
 };
 
 typedef Eigen::Matrix<int, 10, 10> Board;
-typedef Eigen::Matrix<int, 2, 2> Square;
+typedef Eigen::Vector2i Square;
 
 class Battleship {
 
@@ -64,6 +64,11 @@ public:
 	int playerGuess(int x, int y);
 	int checkBoard(Board * b);
 	int checkWinner();
+	void printBoard();
+	int getSquareMat(Board * b, int x, int y);
+	int getPlayerSquareMat(int x, int y) { return getSquareMat(&playerBoard, x, y); };
+	int getComputerSquareMat(int x, int y);
+
 };
 
 #endif

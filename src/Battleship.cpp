@@ -2,22 +2,28 @@
 
 #define EIGEN_DONT_ALIGN_STATICALLY
 #include <Eigen/Dense>
+#include <cassert>
+#include <cstring>
+#include <iostream>
+#include "Material.h"
 
-//gives random number below x
+using namespace std;
+
+//gives random integer in [0, x)
 #define rnd(x) (rand() % (x))
 
-#define isGuessed(x) (!(x) == WATER_SQUARE || (SHIP_MIN < (x) && (x) < SHIP_MAX))
-#define isUnhitShip(x) (SHIP_MIN < (x) && (x) < SHIP_MAX)
-#define SHIP_HIT_DIFF (SHIP_HIT_MIN - SHIP_MIN)
+#define isGuessed(x) (!((x) == SQ_WATER_SQUARE || (SQ_SHIP_MIN <= (x) && (x) <= SQ_SHIP_MAX)))
+#define isUnhitShip(x) (SQ_SHIP_MIN <= (x) && (x) <= SQ_SHIP_MAX)
+#define isHitShip(x) (SQ_SHIP_HIT_MIN <= (x) && (x) <= SQ_SHIP_HIT_MAX)
+#define SHIP_HIT_DIFF (SQ_SHIP_HIT_MIN - SQ_SHIP_MIN)
 
 Battleship::Battleship() {
 	initComputerBoard();
 	initPlayerBoard();
-
 }
 
 void Battleship::initPlayerBoard() {
-	playerBoard.fill(WATER_SQUARE);
+	playerBoard.fill(SQ_WATER_SQUARE);
 	for (int i = 2; i < 6; i++) {
 		int added = 0, rotate = 0;
 		Square botleft;
@@ -31,7 +37,7 @@ void Battleship::initPlayerBoard() {
 }
 
 void Battleship::initComputerBoard() {
-	computerBoard.fill(WATER_SQUARE);
+	computerBoard.fill(SQ_WATER_SQUARE);
 	for (int i = 2; i < 6; i++) {
 		int added = 0, rotate = 0;
 		Square botleft;
@@ -56,7 +62,7 @@ int Battleship::canAddBoat(Board * b, Square botleft, int rotate, int len) {
 	else
 		diff = Square(1, 0);
 	for (int i = 0; i < len; i++) {
-		if ((*b)(botleft.x, botleft.y) != WATER_SQUARE)
+		if ((*b)(botleft[0], botleft[1]) != SQ_WATER_SQUARE)
 			return 0;
 		botleft += diff;
 	}
@@ -74,23 +80,23 @@ void Battleship::addBoat(Board * b, Square botleft, int rotate, int len) {
 		diff = Square(1, 0);
 	switch (len) {
 	case 2:
-		square_type = SHIP_21;
+		square_type = SQ_SHIP_21;
 		break;
 	case 3:
-		square_type = SHIP_31;
+		square_type = SQ_SHIP_31;
 		break;
 	case 4:
-		square_type = SHIP_41;
+		square_type = SQ_SHIP_41;
 		break;
 	case 5:
-		square_type = SHIP_51;
+		square_type = SQ_SHIP_51;
 		break;
 	default:
 		return;
 	}
 
 	for (int i = 0; i < len; i++) {
-		(*b)(botleft.x, botleft.y) = square_type;
+		(*b)(botleft[0], botleft[1]) = square_type;
 		botleft += diff;
 		square_type++;
 	}
@@ -103,7 +109,7 @@ void Battleship::addBoat(Board * b, Square botleft, int rotate, int len) {
  * If already guessed, return 2
  */
 int Battleship::guess(Board * b, int x, int y) {
-	if ((*b)(x, y) == WATER_SQUARE) {
+	if ((*b)(x, y) == SQ_WATER_SQUARE) {
 		return 0;
 	}
 	
@@ -128,11 +134,13 @@ int Battleship::computerGuess() {
 		y = rnd(10);
 		ret = guess(&playerBoard, x, y);
 	}
+
+	cout << "Computer guessed " << x << " " << y << endl;
 	if (ret == 1) {
 		playerBoard(x, y) += SHIP_HIT_DIFF;
 	}
 	else {
-		playerBoard(x, y) = WATER_MISS;
+		playerBoard(x, y) = SQ_WATER_MISS;
 	}
 
 	return ret;
@@ -143,30 +151,28 @@ int Battleship::computerGuess() {
  * If Board b[x][y] is occupied, return 1
  * If already guessed, return 2
  */
-
 int Battleship::playerGuess(int x, int y) {
 	int ret = guess(&computerBoard, x, y);
 	if (ret == 0) {
-		computerBoard(x, y) = WATER_MISS;
+		computerBoard(x, y) = SQ_WATER_MISS;
 	} else if (ret == 1) {
 		computerBoard(x, y) += SHIP_HIT_DIFF;
 	}
-
 	return ret;
 }
 
 /*
- * If board b has no more ships, return 0
- * else, return 1
+ * If board b has no more ships, return 1
+ * else, return 0
  */
 int Battleship::checkBoard(Board * b) {
 	for (int x = 0; x < 10; x++) {
 		for (int y = 0; y < 10; y++) {
 			if (isUnhitShip((*b)(x, y)))
-				return 1;
+				return 0;
 		}
 	}
-	return 0;
+	return 1;
 }
 
 /*
@@ -182,4 +188,41 @@ int Battleship::checkWinner() {
 		return 2;
 	}
 	return 0;
+}
+
+void Battleship::printBoard() {
+	cout << "====================================" << endl;
+	cout << computerBoard.transpose() << endl;
+	cout << "====================================" << endl;
+}
+
+
+/*Returns material type for square at Board b[x, y]*/
+int Battleship::getSquareMat(Board * b, int x, int y) {
+	int type = (*b)(x, y);
+	if (type == SQ_WATER_SQUARE) {
+		return MAT_WATER;
+	}
+	else if (type == SQ_WATER_MISS) {
+		return MAT_WATER_MISS;
+	}
+	else if (isUnhitShip(type)) {
+		return MAT_SHIP;
+	}
+	else {
+		return MAT_SHIP_HIT;
+	}
+}
+
+int Battleship::getComputerSquareMat(int x, int y) {
+	int type = computerBoard(x, y);
+	if (isHitShip(type)) {
+		return MAT_SHIP_HIT;
+	}
+	else if (type == SQ_WATER_MISS) {
+		return MAT_WATER_MISS;
+	}
+	else {
+		return MAT_WATER;
+	}
 }

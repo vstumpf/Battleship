@@ -18,6 +18,8 @@
 #include "Shape.h"
 #include "Light.h"
 #include "Material.h"
+#include "Battleship.h"
+#include "Object.h"
 
 
 using namespace std;
@@ -28,14 +30,20 @@ string RESOURCE_DIR = "./"; // Where the resources are loaded from
 string OBJFILE = "";
 shared_ptr<Camera> camera;
 Program * prog;
-shared_ptr<Shape> shape;
 
 vector<Program *> progs;
 vector<Material *> mats;
 vector<Light *> lights;
+vector<Shape *> shapes;
+vector<Object *> objs;
+
+Battleship * game;
+Square select_sq = { 0, 0 };
+Object * select_obj;
 int progIndex = 0;
 int matIndex = 0;
 int lightIndex = 0;
+
 
 bool keyToggles[256] = {false}; // only for English keyboards!
 
@@ -51,6 +59,45 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action, 
 	if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
+
+	if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
+		if (select_sq.y() < 9)
+			select_sq.y()++;
+	}
+	if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+		if (select_sq.y() > 0)
+			select_sq.y()--;
+	}
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+		if (select_sq.x() < 9)
+			select_sq.x()++;
+	}
+	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
+		if (select_sq.x() > 0)
+			select_sq.x()--;
+	}
+	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+		int ret = game->playerGuess(select_sq.x(), select_sq.y());
+		if (ret == 2) {
+			cout << "ALREADY GUESSED" << endl;
+		} else {
+			int winner = game->checkWinner();
+			if (winner == 0) {
+				game->computerGuess();
+				if (game->checkWinner() != 0)
+					cout << "Computer won!" << endl;
+			}
+			else if (winner == 1) {
+				cout << "Player won!" << endl;
+			}
+			else if (winner == 2) {
+				cout << "Computer won!" << endl;
+			}
+		}
+	}
+
+
+
 	/* No materials needed, will be handled in shader
 	if (key == GLFW_KEY_M && action == GLFW_PRESS) {
 		if (mods & GLFW_MOD_SHIFT) {
@@ -172,36 +219,73 @@ static void init()
 		else if (i == OUTLN) {
 			prog->setShaderNames(RESOURCE_DIR + "vert.glsl", RESOURCE_DIR + "outline.glsl");
 		}
-		prog->setVerbose(false);
+		prog->setVerbose(true);
 		prog->init();
 		prog->addAttribute("aPos");
 		prog->addAttribute("aNor");
+		prog->addAttribute("aTex");
 		prog->addUniform("MV");
 		prog->addUniform("P");
-		prog->addUniform("lightPos0");
-		prog->addUniform("lightInt0");
+		prog->addUniform("lightPos");
+		prog->addUniform("lightInt");
 		prog->addUniform("threshold");
 		prog->addUniform("ka");
 		prog->addUniform("kd");
 		prog->addUniform("ks");
 		prog->addUniform("s");
+		prog->addUniform("selected");
 		progs.push_back(prog);
 	}
-	mats.push_back(new Material(BLUE));
-	mats.push_back(new Material(GRAY));
-	mats.push_back(new Material(PINK));
+	for (int i = MAT_MIN; i < MAT_MAX; i++) {
+		mats.push_back(new Material(i));
+	}
 
 	lights.push_back(new Light(FRONT));
-	lights.push_back(new Light(BACK));
 
 	camera = make_shared<Camera>();
 	camera->setInitDistance(2.0f);
 	
-	shape = make_shared<Shape>();
-	shape->loadMesh(OBJFILE);
-	shape->fitToUnitBox();
-	shape->init();
+	for (i = MIN_SHAPE; i < MAX_SHAPE; i++) {
+		Shape * shape = new Shape();
+		switch (i) {
+		case SQUARE:
+			OBJFILE = "square.obj";
+			break;
+		case CUBE:
+			OBJFILE = "cube.obj";
+			break;
+		default:
+			throw invalid_argument("bad shape");
+			break;
+		}
+		shape->loadMesh(RESOURCE_DIR + OBJFILE);
+		shape->fitToUnitBox();
+		shape->init();
+		shapes.push_back(shape);
+	}
 	
+	for (i = 0; i < 200; i++) {
+		objs.push_back(new Object(shapes[SQUARE]));
+	}
+
+
+	game = new Battleship();
+	Object * obj;
+	for (i = 0; i < 2; i++) {
+		for (int x = 0; x < 10; x++) {
+			for (int y = 0; y < 10; y++) {
+				int index = i * 100 + x * 10 + y;
+				obj = objs[index];
+				obj->setMTrans(Vector3f(-5 + x * 1.1f, -5 + y * 1.1f, 0));
+			}
+		}
+	}
+	select_obj = new Object(shapes[SQUARE]);
+	select_obj->setJScale(1.25f);
+	select_obj->setMScale(.07f);
+	select_obj->setMat(mats[MAT_SELECT]);
+
+
 	GLSL::checkError(GET_FILE_LINE);
 }
 
@@ -239,16 +323,53 @@ static void render()
 	prog->bind();
 	glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, P->topMatrix().data());
 	glUniformMatrix4fv(prog->getUniform("MV"), 1, GL_FALSE, MV->topMatrix().data());
-	glUniform3f(prog->getUniform("lightPos0"), lights[FRONT]->getX(), lights[FRONT]->getY(), lights[FRONT]->getZ());
-	glUniform1f(prog->getUniform("lightInt0"), lights[FRONT]->getIntensity());
-	glUniform3f(prog->getUniform("ka"), mats[matIndex]->getKar(), mats[matIndex]->getKag(), mats[matIndex]->getKab());
-	glUniform3f(prog->getUniform("kd"), mats[matIndex]->getKdr(), mats[matIndex]->getKdg(), mats[matIndex]->getKdb());
-	glUniform3f(prog->getUniform("ks"), mats[matIndex]->getKsr(), mats[matIndex]->getKsg(), mats[matIndex]->getKsb());
-	glUniform1f(prog->getUniform("s"), mats[matIndex]->getS());
+	glUniform3f(prog->getUniform("lightPos"), lights[FRONT]->getX(), lights[FRONT]->getY(), lights[FRONT]->getZ());
+	glUniform1f(prog->getUniform("lightInt"), lights[FRONT]->getIntensity());
 	glUniform1f(prog->getUniform("threshold"), THRESHOLD);
-	shape->draw(prog);
+	vector<Object *>::iterator it;
+	
+	Object * obj;
+
+	float xboardiff = .5;
+	// draw player board
+	MV->pushMatrix();
+	MV->translate(-xboardiff, 0, 0);
+	for (int x = 0; x < 10; x++) {
+		for (int y = 0; y < 10; y++) {
+			int index = x * 10 + y;
+
+			obj = objs[index];
+			obj->setMat(mats[game->getPlayerSquareMat(x, y)]);
+			obj->draw(MV.get(), prog);
+		}
+	}
+	MV->popMatrix();
+	// end player board 
+	
+	// draw computer board
+	MV->pushMatrix();
+	MV->translate(xboardiff, 0, 0);
+	for (int x = 0; x < 10; x++) {
+		for (int y = 0; y < 10; y++) {
+			int index = x * 10 + y + 100;
+			obj = objs[index];
+			if (select_sq.x() == x && select_sq.y() == y)
+				obj->setSelected(1);
+			else
+				obj->setSelected(0);
+			obj->setMat(mats[game->getComputerSquareMat(x, y)]);
+			obj->draw(MV.get(), prog);
+		}
+	}
+	select_obj->setMTrans(Vector3f(-5 + select_sq.x() * 1.1, -5 + select_sq.y() * 1.1, 0));
+	select_obj->draw(MV.get(), prog);
+	MV->popMatrix();
+	// end computer board
+
 	prog->unbind();
 	
+
+
 	MV->popMatrix();
 	P->popMatrix();
 	
@@ -262,7 +383,6 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	RESOURCE_DIR = argv[1] + string("/");
-	OBJFILE = argv[2];
 	// Set error callback.
 	glfwSetErrorCallback(error_callback);
 	// Initialize the library.
@@ -270,7 +390,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	// Create a windowed mode window and its OpenGL context.
-	window = glfwCreateWindow(640, 480, "VINCENT STUMPF", NULL, NULL);
+	window = glfwCreateWindow(640, 480, "Battleship", NULL, NULL);
 	if(!window) {
 		glfwTerminate();
 		return -1;
@@ -313,5 +433,19 @@ int main(int argc, char **argv)
 	// Quit program.
 	glfwDestroyWindow(window);
 	glfwTerminate();
+	return 0;
+}
+
+
+int main2(int argc, char * argv[]) {
+	Battleship * game = new Battleship();
+	game->printBoard();
+	int x, y;
+	cin >> x >> y;
+	while (x != 11 && y != 11) {
+		game->playerGuess(x, y);
+		game->printBoard();
+		cin >> x >> y;
+	}
 	return 0;
 }

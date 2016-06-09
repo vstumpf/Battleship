@@ -4,10 +4,16 @@
 #define EIGEN_DONT_ALIGN_STATICALLY
 #include <Eigen/Dense>
 
-#define BLUE 0
-#define GRAY 1
-#define PINK 2
-#define MAXMATS 3
+enum TILE_MAT {
+	MAT_MIN = 0,
+	MAT_WATER = MAT_MIN,
+	MAT_WATER_MISS,
+	MAT_SHIP,
+	MAT_SHIP_HIT,
+	MAT_SELECT,
+	MAT_MAX
+};
+
 class Material
 {
 public:

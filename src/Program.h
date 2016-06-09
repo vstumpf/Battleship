@@ -11,7 +11,7 @@
 
 #define PHONG 0
 #define OUTLN 1
-#define MAXPROGS 2
+#define MAXPROGS 1
 
 #define THRESHOLD .25
 

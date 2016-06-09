@@ -13,18 +13,18 @@ class Light
 {
 public:
 	Light(int);
-	void setIntensity(double t) { intensity = t; };
-	double getIntensity() { return intensity; };
+	void setIntensity(float t) { intensity = t; };
+	float getIntensity() { return intensity; };
 	void setPos(Eigen::Vector3f t) { pos = t; };
 	Eigen::Vector3f getPos() { return pos; };
 	void setColPos(Eigen::Vector3f t) { col = t; };
 	Eigen::Vector3f getCol() { return col; };
-	double getX() { return pos[0]; };
-	double getY() { return pos[1]; };
-	double getZ() { return pos[2]; };
+	float getX() { return pos[0]; };
+	float getY() { return pos[1]; };
+	float getZ() { return pos[2]; };
 
-	void translateX(double t);
-	void translateY(double t);
+	void translateX(float t);
+	void translateY(float t);
 	void upX();
 	void downX();
 	void upY();
@@ -34,7 +34,7 @@ public:
 private:
 	Eigen::Vector3f pos;
 	Eigen::Vector3f col;
-	double intensity;
+	float intensity;
 	
 };
 

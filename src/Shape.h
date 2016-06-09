@@ -8,6 +8,13 @@
 
 class Program;
 
+enum SHAPES {
+	MIN_SHAPE = 0,
+	SQUARE = MIN_SHAPE,
+	CUBE,
+	MAX_SHAPE
+};
+
 class Shape
 {
 public:
